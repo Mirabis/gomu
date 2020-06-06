@@ -16,7 +16,6 @@ import (
 var opts struct {
 	Threads   int    `short:"t" long:"threads" default:"20" description:"Number of concurrent threads"`
 	InputFile string `short:"i" long:"input" description:"Input file containing line seperated e-mail addresses, otherwise defaults to STDIN"`
-	//Output	   	string `short:"o" long:"output" choice:"tcp" choice:"udp" default:"udp" description:"Protocol to use for lookups"`
 	Domain    string `short:"d" long:"domain" default:"outlook.office365.com" description:"Autodiscover domain to use"`
 	UserAgent string `short:"u" long:"user-agent" default:"Microsoft Office/16.0 (Windows NT 10.0; Microsoft Outlook 16.0.12026; Pro)" description:"User specified User agent to overwrite default"`
 	Verbose   bool   `short:"v" long:"verbose" description:"Turns on verbose logging"`
@@ -24,20 +23,9 @@ var opts struct {
 }
 
 func main() {
-	//Just a fancy ass banner
-	asciiArt :=
-		`
-	██████╗  ██████╗ ███╗   ███╗██╗   ██╗
-	██╔════╝ ██╔═══██╗████╗ ████║██║   ██║
-	██║  ███╗██║   ██║██╔████╔██║██║   ██║
-	██║   ██║██║   ██║██║╚██╔╝██║██║   ██║
-	╚██████╔╝╚██████╔╝██║ ╚═╝ ██║╚██████╔╝
-	╚═════╝  ╚═════╝ ╚═╝     ╚═╝ ╚═════╝ 
-	`
-	fmt.Println(asciiArt)
 	_, err := flags.ParseArgs(&opts, os.Args)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "%s", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
@@ -111,7 +99,7 @@ func doWork(work chan string, wg *sync.WaitGroup) {
 			email := q["Email"]
 			if email == nil {
 				if opts.Verbose { // Only print to stderr so we don't redirect it to a file
-					fmt.Fprintln(os.Stderr, "ERR: Got redirect for %s but couldn't find Email parameter", input_email)
+					fmt.Fprintln(os.Stderr, "ERR: Got redirect for "+input_email+"s but couldn't find Email parameter")
 				}
 				continue
 			}
