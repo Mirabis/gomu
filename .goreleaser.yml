@@ -1,7 +1,8 @@
+# This is an example goreleaser.yaml file with some sane defaults.
+# Make sure to check the documentation at http://goreleaser.com
 before:
   hooks:
     - go mod download
-    # - go generate ./...
 builds:
 - env:
     - CGO_ENABLED=0
@@ -9,6 +10,14 @@ builds:
     - linux
     - darwin
     - windows
+  goarch:
+    - 386
+    - amd64
+    - arm
+    - arm64
+  ignore:
+    - goos: darwin
+      goarch: 386
 archives:
 - name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}'
   replacements:
@@ -17,6 +26,9 @@ archives:
     windows: Windows
     386: i386
     amd64: x86_64
+  format_overrides:
+    - goos: windows
+      format: zip
 checksum:
   name_template: 'checksums.txt'
 snapshot:
@@ -27,3 +39,4 @@ changelog:
     exclude:
     - '^docs:'
     - '^test:'
+  

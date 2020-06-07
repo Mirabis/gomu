@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	flags "github.com/jessevdk/go-flags"
+	"github.com/jessevdk/go-flags"
 	fasthttp "github.com/valyala/fasthttp"
 )
 
@@ -24,9 +24,9 @@ var opts struct {
 }
 
 func main() {
-	_, err := flags.ParseArgs(&opts, os.Args)
+	_, err := flags.Parse(&opts)
 	if err != nil {
-		panic(err)
+		os.Exit(1)
 	}
 
 	//set amount of Threads
