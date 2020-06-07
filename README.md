@@ -1,5 +1,8 @@
+[![Release](https://img.shields.io/github/release/mirabis/gomu.svg)](https://github.com/mirabis/gomu/releases/latest)
+[![Actions Status](https://github.com/mirabis/gomu/workflows/Release/badge.svg)](https://github.com/mirabis/gomu/actions)
+[![Go Report Card](https://goreportcard.com/report/github.com/Mirabis/gomu)
+
 # gomu 
-[![Go Report Card](https://goreportcard.com/report/github.com/Mirabis/gomu)]
 
 Small, fast, simple tool for performing reverse Office365 lookups.
 
@@ -12,6 +15,7 @@ This can be a useful way of finding usernames belonging to a company using Azure
 ```sh
 go get github.com/mirabis/gomu
 ```
+or download a binary from the Releases page.
 
 ## Usage
 The most basic usage is to simply pipe a list of e-mail addresses into the tool, for example:

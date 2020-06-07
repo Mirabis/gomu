@@ -62,7 +62,9 @@ func main() {
 	client := &fasthttp.Client{
 		MaxConnsPerHost:               1024,
 		DisableHeaderNamesNormalizing: true,
+		MaxConnWaitTimeout:            20 * time.Second,
 		ReadTimeout:                   3 * time.Second,
+		NoDefaultUserAgentHeader:      true,
 		TLSConfig:                     &tls.Config{InsecureSkipVerify: true},
 	}
 
