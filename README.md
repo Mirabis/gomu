@@ -1,6 +1,6 @@
 [![Release](https://img.shields.io/github/release/mirabis/gomu.svg)](https://github.com/mirabis/gomu/releases/latest)
 [![Actions Status](https://github.com/mirabis/gomu/workflows/Release/badge.svg)](https://github.com/mirabis/gomu/actions)
-[![Go Report Card](https://goreportcard.com/report/github.com/Mirabis/gomu)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Mirabis/gomu)](https://goreportcard.com/report/github.com/Mirabis/gomu)
 
 # gomu 
 
