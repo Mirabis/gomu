@@ -1,4 +1,5 @@
 # gomu 
+[![Go Report Card](https://goreportcard.com/report/github.com/Mirabis/gomu)]
 
 Small, fast, simple tool for performing reverse Office365 lookups.
 
