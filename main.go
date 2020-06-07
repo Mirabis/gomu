@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"crypto/tls"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"sync"
+	"time"
 
 	flags "github.com/jessevdk/go-flags"
+	fasthttp "github.com/valyala/fasthttp"
 )
 
 // CLI options
@@ -25,23 +26,26 @@ var opts struct {
 func main() {
 	_, err := flags.ParseArgs(&opts, os.Args)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		panic(err)
 	}
 
 	//set amount of Threads
 	numWorkers := opts.Threads
-
 	work := make(chan string)
 	go func() {
 		// Default to reading standard in, but change if we specify input file
 		scanner := bufio.NewScanner(nil)
 		if opts.InputFile != "" {
-			file, _ := os.Open(opts.InputFile)
+			file, err := os.Open(opts.InputFile)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "ERR: could not load input file please try again", err)
+				os.Exit(1)
+			}
+			scanner = bufio.NewScanner(file)
 			defer file.Close()
-			scanner = bufio.NewScanner(bufio.NewReader(file))
+
 		} else {
-			scanner = bufio.NewScanner(bufio.NewReader(os.Stdin))
+			scanner = bufio.NewScanner(os.Stdin)
 		}
 		// for each line on input
 		for scanner.Scan() {
@@ -54,57 +58,55 @@ func main() {
 	}()
 	// Create a waiting group
 	wg := &sync.WaitGroup{}
+	// create one webclient
+	client := &fasthttp.Client{
+		MaxConnsPerHost:               1024,
+		DisableHeaderNamesNormalizing: true,
+		ReadTimeout:                   3 * time.Second,
+		TLSConfig:                     &tls.Config{InsecureSkipVerify: true},
+	}
 
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
-		go doWork(work, wg) //Schedule the work
+		go doWork(work, wg, client) //Schedule the work
 	}
 	wg.Wait() //Wait for it all to complete
 }
 
-func doWork(work chan string, wg *sync.WaitGroup) {
+func doWork(work chan string, wg *sync.WaitGroup, wc *fasthttp.Client) {
 	defer wg.Done()
-	// Disable verifying of TLS certificates, unneccesary in tool's usecase
-	customTransport := http.DefaultTransport.(*http.Transport).Clone()
-	customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	//For control over HTTP client headers, redirect policy, and other settings, create a Client:
-	client := &http.Client{
-		Transport: customTransport,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse // do not follow redirects but also do not error
-		},
-	}
+	//It is unsafe using Request object from concurrently running goroutines, even for marshaling the request.
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+	req.Header.SetUserAgent(opts.UserAgent)
+	req.Header.Set(fasthttp.HeaderAccept, "application/json")
+	req.Header.SetMethod(fasthttp.MethodGet)
+	resp.SkipBody = true
 	prefix := "https://"
 	if opts.Insecure {
 		prefix = "http://"
 	}
-	req, _ := http.NewRequest("GET", fmt.Sprintf("%s%s", prefix, opts.Domain), nil)
-	req.Header.Add("User-Agent", opts.UserAgent)
-	req.Header.Add("Accept", "application/json")
-	req.URL.RawQuery = "Protocol=Autodiscoverv1"
-	req.URL.ForceQuery = true
-	req.Close = true
-	for input_email := range work {
-		req.URL.Path = url.PathEscape(fmt.Sprintf("/autodiscover/autodiscover.json/v1.0/%s", input_email))
-		resp, err := client.Do(req)
+	for inputEmail := range work {
+		req.SetRequestURI(fmt.Sprintf("%s%s/autodiscover/autodiscover.json/v1.0/%s%s", prefix, opts.Domain, inputEmail, "?Protocol=Autodiscoverv1"))
+		err := wc.Do(req, resp) // do not follow redirect, just read
 		if err != nil {
-			if opts.Verbose {
-				fmt.Fprintln(os.Stderr, "ERR: performing request", err)
-			}
-			continue //TODO: Add Error-handling
+			fmt.Fprintln(os.Stderr, "ERR: performing request", err)
+			fasthttp.ReleaseResponse(resp)
+			continue
 		}
-		loc, _ := resp.Location()
-		if loc != nil {
-			q := loc.Query()
-			email := q["Email"]
-			if email == nil {
-				if opts.Verbose { // Only print to stderr so we don't redirect it to a file
-					fmt.Fprintln(os.Stderr, "ERR: Got redirect for "+input_email+"s but couldn't find Email parameter")
+		if loc := resp.Header.Peek("Location"); loc != nil {
+			url, _ := url.Parse(string(loc))
+			if url.RawQuery != "" {
+				if email := url.Query()["Email"]; email == nil {
+					if opts.Verbose { // Only print to stderr so we don't redirect it to a file
+						fmt.Fprintln(os.Stderr, "ERR: Got redirect for", inputEmail, "but couldn't find Email parameter")
+					}
+				} else {
+					fmt.Printf("%s, %s \n", inputEmail, email[0])
 				}
-				continue
 			}
-			fmt.Printf("%s, %s \n", input_email, email[0])
 		}
-		continue
+		fasthttp.ReleaseResponse(resp)
 	}
+	fasthttp.ReleaseRequest(req)
 }
