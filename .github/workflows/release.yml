@@ -20,3 +20,5 @@ jobs:
       uses: goreleaser/goreleaser-action@master
       with:
         args: release
+      env:      
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
